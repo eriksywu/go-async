@@ -3,12 +3,11 @@ package go_async_test
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	. "github.com/eriksywu/go-async"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
-
 
 func delayedWorkload(delay time.Duration) WorkFn {
 	return func(ctx context.Context) (T, error) {
@@ -21,7 +20,7 @@ func delayedWorkload(delay time.Duration) WorkFn {
 }
 
 func Test_WhenAny(t *testing.T) {
-	var times = []time.Duration{40,30,1,20}
+	var times = []time.Duration{40, 30, 1, 20}
 	tasks := make([]*Task, 0, len(times))
 	for _, delay := range times {
 		tasks = append(tasks, CreateTask(nil, delayedWorkload(delay)))
@@ -34,7 +33,7 @@ func Test_WhenAny(t *testing.T) {
 }
 
 func Test_WhenAnyCancelAfter(t *testing.T) {
-	var times = []time.Duration{40,30,1,20}
+	var times = []time.Duration{40, 30, 1, 20}
 	tasks := make([]*Task, 0, len(times))
 	for _, delay := range times {
 		tasks = append(tasks, CreateTask(nil, delayedWorkload(delay)))

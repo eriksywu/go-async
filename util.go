@@ -1,11 +1,14 @@
 package go_async
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
-func WrapAction(f func()) func() T {
-	return func() T {
+func WrapAction(f func()) WorkFn {
+	return func(ctx context.Context) (T, error) {
 		f()
-		return struct{}{}
+		return nil, nil
 	}
 }
 
@@ -51,8 +54,8 @@ func WhenAnyAsync(cancelRemaining bool, tasks ...*Task) *Task {
 func WhenAll(tasks ...*Task) {
 	wg := sync.WaitGroup{}
 	for _, task := range tasks {
+		wg.Add(1)
 		go func(t *Task) {
-			wg.Add(1)
 			t.Result()
 			wg.Done()
 		}(task)

@@ -174,9 +174,9 @@ func CreateTask(ctxSrc ContextSource, worker WorkFn) *Task {
 	}
 
 	task := &Task{
-		rwLock: sync.RWMutex{},
-		state:  Initiated,
-		runner: runner,
+		rwLock:           sync.RWMutex{},
+		state:            Initiated,
+		runner:           runner,
 		parentCancelFunc: parentCancelFn,
 		parentContext:    parentCtx,
 		cancelChan:       cancelChan}

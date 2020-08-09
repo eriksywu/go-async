@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	. "github.com/eriksywu/go-async"
+	"github.com/stretchr/testify/assert"
 )
 
 func dummyWorkload(err error) WorkFn {

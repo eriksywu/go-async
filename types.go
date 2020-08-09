@@ -15,7 +15,6 @@ func (s State) IsTerminal() bool {
 	return s == Done || s == Cancelled || s == InternalError
 }
 
-
 func (s State) IsRunning() bool {
 	return s == Running
 }
