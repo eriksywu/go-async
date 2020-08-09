@@ -9,13 +9,13 @@ import (
 
 type T interface{}
 
-type worker func(ctx context.Context) (T, error)
+type WorkFn func(ctx context.Context) (T, error)
 type runner func() (<-chan T, <-chan error)
 
 type ContextSource func() context.Context
 
 type Task struct {
-	// worker is a cpu/io-bound workload
+	// WorkFn is a cpu/io-bound workload
 	parentCancelFunc context.CancelFunc
 	parentContext    context.Context
 	//runnerCancelFunc context.CancelFunc
@@ -61,6 +61,7 @@ func (t *Task) Result() (*TaskResult, error) {
 	if t.State().IsTerminal() {
 		return t.result, nil
 	}
+	t._run()
 	t._result()
 	return t.result, nil
 }
@@ -146,7 +147,12 @@ func (t *Task) recover() {
 	t.setState(InternalError)
 }
 
-func CreateTask(ctxSrc ContextSource, worker worker) *Task {
+func CreateTask(ctxSrc ContextSource, worker WorkFn) *Task {
+	if ctxSrc == nil {
+		ctxSrc = func() context.Context {
+			return context.Background()
+		}
+	}
 	parentCtx, parentCancelFn := context.WithCancel(ctxSrc())
 	runnerCtx, _ := context.WithCancel(parentCtx)
 	cancelChan := make(chan struct{})
@@ -159,10 +165,8 @@ func CreateTask(ctxSrc ContextSource, worker worker) *Task {
 				cancelChan <- struct{}{}
 			}
 			if err != nil {
-				//close(resultChan)
 				errorChan <- err
 			} else {
-				//close(errorChan)
 				resultChan <- result
 			}
 		}()
@@ -173,7 +177,6 @@ func CreateTask(ctxSrc ContextSource, worker worker) *Task {
 		rwLock: sync.RWMutex{},
 		state:  Initiated,
 		runner: runner,
-		//runnerCancelFunc: runnerCancelFn,
 		parentCancelFunc: parentCancelFn,
 		parentContext:    parentCtx,
 		cancelChan:       cancelChan}
@@ -181,7 +184,7 @@ func CreateTask(ctxSrc ContextSource, worker worker) *Task {
 	return task
 }
 
-func CreateAndRunAsync(ctxSrc ContextSource, worker worker) *Task {
+func CreateAndRunAsync(ctxSrc ContextSource, worker WorkFn) *Task {
 	task := CreateTask(ctxSrc, worker)
 	task.RunAsync()
 	return task
