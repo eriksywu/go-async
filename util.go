@@ -14,13 +14,19 @@ func WrapAction(f func()) WorkFn {
 
 func WhenAny(cancelRemaining bool, tasks ...*Task) *Task {
 	watcher := make(chan *Task)
+	// TODO fix: this leads to goroutine leaks
 	for _, task := range tasks {
 		go func(t *Task) {
 			t.Result()
-			watcher <- t
+			select {
+			case watcher <- t:
+				watcher = nil
+			default:
+			}
 		}(task)
 	}
 	completedTask := <-watcher
+
 	if cancelRemaining {
 		for _, task := range tasks {
 			if task != completedTask {

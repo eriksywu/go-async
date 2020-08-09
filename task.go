@@ -37,7 +37,7 @@ type TaskResult struct {
 
 func (t *Task) Cancel() (*TaskResult, error) {
 	if t.State().IsTerminal() {
-		return nil, fmt.Errorf("task state %s is terminal - cannot cancel", t.state)
+		return nil, fmt.Errorf("task state %v is terminal - cannot cancel", t.state)
 	}
 	// hacky - using parent context to propagate to children context so we can figure out if cancel has been called
 	// without requiring the workerFn impl to be strictly cancelFn aware
@@ -50,7 +50,7 @@ func (t *Task) Cancel() (*TaskResult, error) {
 
 func (t *Task) CancelAsync() error {
 	if t.State().IsTerminal() {
-		return fmt.Errorf("task state %s is terminal - cannot cancel", t.state)
+		return fmt.Errorf("task state %v is terminal - cannot cancel", t.state)
 	}
 	t.parentCancelFunc()
 	t.setState(Cancelling)
@@ -103,7 +103,7 @@ func (t *Task) _watch() {
 
 func (t *Task) RunAsync() error {
 	if t.State().IsTerminal() {
-		return fmt.Errorf("task state %s is terminal - cannot start", t.state)
+		return fmt.Errorf("task state %v is terminal - cannot start", t.state)
 	}
 	t._run()
 	go t._watch()

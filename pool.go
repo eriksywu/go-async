@@ -139,6 +139,8 @@ func newRunner(request <-chan func(), worker *Worker, n int) func(ready chan<- r
 			}
 		}()
 		defer worker.onExit()
+
+		// TODO: can simply this via tasks.WhenAny
 		for {
 			select {
 			case <-worker.ctx.Done():

@@ -12,7 +12,7 @@ func main() {
 	//defer profile.Start(profile.MemProfile).Stop()
 	pool := go_async.NewPool(10, context.Background())
 	pool.Start()
-	time.Sleep(5*time.Second)
+	time.Sleep(5 * time.Second)
 	fmt.Println("======================================================")
 	wg := sync.WaitGroup{}
 	n := 10
@@ -27,7 +27,7 @@ func main() {
 }
 
 func startWork(pool *go_async.Pool, wg *sync.WaitGroup, agentNumber int) {
-	ctx, _ := context.WithTimeout(context.Background(), 600* time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 600*time.Second)
 	go func() {
 		defer wg.Done()
 		i := 0
@@ -35,9 +35,10 @@ func startWork(pool *go_async.Pool, wg *sync.WaitGroup, agentNumber int) {
 
 		for {
 			select {
-			case <- ctx.Done(): {
-				return
-			}
+			case <-ctx.Done():
+				{
+					return
+				}
 			case queue <- func() {
 				fmt.Printf("executing job=%d for agent=%d\n", i, agentNumber)
 				time.Sleep(1 * time.Second)

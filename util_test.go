@@ -13,14 +13,17 @@ func delayedWorkload(delay time.Duration) WorkFn {
 	return func(ctx context.Context) (T, error) {
 		timer := time.NewTimer(time.Second * delay)
 		fmt.Printf("gonna sleep for delay=%d \n", delay)
-
-		<-timer.C
-		return int(delay), nil
+		select {
+		case <-timer.C:
+			return int(delay), nil
+		case <-ctx.Done():
+			return nil, RunnerExitedFromCancellationError{}
+		}
 	}
 }
 
 func Test_WhenAny(t *testing.T) {
-	var times = []time.Duration{40, 30, 1, 20}
+	var times = []time.Duration{4, 3, 1}
 	tasks := make([]*Task, 0, len(times))
 	for _, delay := range times {
 		tasks = append(tasks, CreateTask(nil, delayedWorkload(delay)))
@@ -33,7 +36,7 @@ func Test_WhenAny(t *testing.T) {
 }
 
 func Test_WhenAnyCancelAfter(t *testing.T) {
-	var times = []time.Duration{40, 30, 1, 20}
+	var times = []time.Duration{4, 3, 1}
 	tasks := make([]*Task, 0, len(times))
 	for _, delay := range times {
 		tasks = append(tasks, CreateTask(nil, delayedWorkload(delay)))
@@ -42,8 +45,12 @@ func Test_WhenAnyCancelAfter(t *testing.T) {
 	completedTask := WhenAny(true, tasks...)
 	assert.Equal(t, Done, completedTask.State())
 	result, _ := completedTask.Result()
+	// this could be brittle
 	assert.Equal(t, 1, result.Result.(int))
 	for _, task := range tasks {
 		assert.True(t, !task.State().IsRunning())
+		if !task.State().IsTerminal() {
+			assert.Eventually(t, func() bool { return task.State() == Cancelled}, 10*time.Second, time.Second)
+		}
 	}
 }

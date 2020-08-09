@@ -1,14 +1,14 @@
 package go_async
 
-type State string
+type State int
 
 const (
-	Initiated     State = "Initiated"
-	Running       State = "Running"
-	Done          State = "Done"
-	Cancelling    State = "Cancelling"
-	Cancelled     State = "Cancelled"
-	InternalError State = "InternalError"
+	Initiated State = iota
+	Running
+	Done
+	Cancelling
+	Cancelled
+	InternalError
 )
 
 func (s State) IsTerminal() bool {
