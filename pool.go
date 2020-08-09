@@ -12,13 +12,13 @@ type readiness struct {
 }
 
 type Pool struct {
-	workers  []*Worker
-	ready    chan readiness
-	queue    chan func()
-	_started bool
-	parentCtx context.Context
+	workers    []*Worker
+	ready      chan readiness
+	queue      chan func()
+	_started   bool
+	parentCtx  context.Context
 	cancelFunc context.CancelFunc
-	wg sync.WaitGroup
+	wg         *sync.WaitGroup
 }
 
 func NewPool(size int, ctx context.Context) *Pool {
@@ -28,18 +28,18 @@ func NewPool(size int, ctx context.Context) *Pool {
 	parentCtx, cancelFunc := context.WithCancel(ctx)
 	queue := make(chan func(), 1)
 	ready := make(chan readiness, 1)
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	workers := make([]*Worker, size, size)
 	pool := &Pool{workers: workers,
-		queue: queue,
-		ready: ready,
-		wg: wg,
+		queue:      queue,
+		ready:      ready,
+		wg:         wg,
 		cancelFunc: cancelFunc,
-		parentCtx: parentCtx}
+		parentCtx:  parentCtx}
 
 	for n, _ := range workers {
 		workerCtx, _ := context.WithCancel(parentCtx)
-		workers[n] = newWorker(n, workerCtx, func() {pool.wg.Done()})
+		workers[n] = newWorker(n, workerCtx, func() { pool.wg.Done() })
 	}
 
 	return pool
@@ -70,7 +70,7 @@ func (p *Pool) ChangeSize(size int) error {
 	newWorkers := make([]*Worker, size, size)
 	for n, _ := range newWorkers {
 		workerCtx, _ := context.WithCancel(p.parentCtx)
-		worker := newWorker(n, workerCtx, func() {p.wg.Done()})
+		worker := newWorker(n, workerCtx, func() { p.wg.Done() })
 		newWorkers[n] = worker
 		worker.Run(p.ready)
 		p.wg.Add(1)
@@ -97,16 +97,19 @@ func (p *Pool) Start() {
 
 func (p *Pool) listen() {
 	for work := range p.queue {
-		readyWorker := <-p.ready
-		readyWorker.worker.Request() <- work
+		select {
+		case readyWorker := <-p.ready:
+			readyWorker.worker.Request() <- work
+		default:
+		}
 	}
 }
 
 type Worker struct {
 	runner  func(ready chan<- readiness)
 	request chan func()
-	ctx context.Context
-	onExit func()
+	ctx     context.Context
+	onExit  func()
 }
 
 func newWorker(n int, ctx context.Context, onExit func()) *Worker {
@@ -136,16 +139,22 @@ func newRunner(request <-chan func(), worker *Worker, n int) func(ready chan<- r
 			}
 		}()
 		defer worker.onExit()
-		select {
-		case <- worker.ctx.Done():
-			return
-		case ready <- readiness{worker: worker, n: n}:
-			fmt.Printf("runner n=%d: waiting for work \n", n)
-			work := <-request
-			fmt.Printf("runner n=%d: acquired work \n", n)
-			work()
-		default:
-			//noop?
+		for {
+			select {
+			case <-worker.ctx.Done():
+				return
+			case ready <- readiness{worker: worker, n: n}:
+				fmt.Printf("runner n=%d: waiting for work \n", n)
+				select {
+				case work := <-request:
+					fmt.Printf("runner n=%d: acquired work \n", n)
+					work()
+				default:
+					//noop?
+				}
+			default:
+				//noop?
+			}
 		}
 	}
 }

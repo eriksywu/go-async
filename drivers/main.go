@@ -9,12 +9,16 @@ import (
 )
 
 func main() {
+	//defer profile.Start(profile.MemProfile).Stop()
 	pool := go_async.NewPool(10, context.Background())
 	pool.Start()
+	time.Sleep(5*time.Second)
+	fmt.Println("======================================================")
 	wg := sync.WaitGroup{}
-	wg.Add(10)
-	for i := 0; i < 10; i++ {
-		startWork(pool, wg, i)
+	n := 10
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		startWork(pool, &wg, i)
 	}
 	wg.Wait()
 	cancelTask := pool.CancelAsync()
@@ -22,24 +26,33 @@ func main() {
 	fmt.Println("wtf")
 }
 
-func startWork(pool *go_async.Pool, wg sync.WaitGroup, agentNumber int) {
+func startWork(pool *go_async.Pool, wg *sync.WaitGroup, agentNumber int) {
+	ctx, _ := context.WithTimeout(context.Background(), 600* time.Second)
 	go func() {
 		defer wg.Done()
 		i := 0
-		select {
-		case pool.GetQueue() <- func() {
-			fmt.Printf("agent=%d sent job=%d \n", agentNumber, i)
-			time.Sleep(1 * time.Second)
-		}:
-			i++
-			fmt.Printf("agent=%d has finished sending jobs \n", agentNumber)
-			if i == 100 {
-				break
+		queue := pool.GetQueue()
+
+		for {
+			select {
+			case <- ctx.Done(): {
+				return
 			}
-		default:
-			fmt.Println("do nothing")
-			time.Sleep(1 * time.Second)
+			case queue <- func() {
+				fmt.Printf("executing job=%d for agent=%d\n", i, agentNumber)
+				time.Sleep(1 * time.Second)
+			}:
+				i++
+				fmt.Printf("agent=%d has finished sending jobs \n", agentNumber)
+				if i == 10 {
+					break
+				}
+			default:
+				fmt.Printf("agent=%d is waiting to send job=%d \n", agentNumber, i)
+				time.Sleep(1 * time.Second)
+			}
 		}
+
 	}()
 
 }
